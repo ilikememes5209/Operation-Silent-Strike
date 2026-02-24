@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operation: Silent Strike - Tactical Sniper Campaign</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { width: 100vw; height: 100vh; background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%); 
+               display: flex; font-family: 'Courier New', monospace; color: #00ff00; overflow: hidden; }
+
+        .main-menu { position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+                     background: linear-gradient(135deg, #0d0d0d 0%, #1a0000 50%, #0d0d0d 100%); 
+                     display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                     z-index: 1000; gap: 30px; }
+        .main-menu.hidden { display: none; }
+
+        .game-title { font-size: 48px; font-weight: bold; color: #ff0000; 
+                      text-shadow: 0 0 30px #ff0000, 0 0 60px #8b0000; letter-spacing: 3px; }
+        .game-subtitle { font-size: 18px; color: #00ff00; letter-spacing: 2px; margin-bottom: 40px; }
+
+        .menu-button { background: linear-gradient(135deg, #ff0000, #8b0000); color: #fff; 
+                       border: 2px solid #ff0000; padding: 15px 50px; font-size: 18px; font-weight: bold; 
+                       letter-spacing: 2px; cursor: pointer; text-transform: uppercase; 
+                       box-shadow: 0 0 30px rgba(255, 0, 0, 0.5); transition: all 0.3s; 
+                       font-family: 'Courier New', monospace; margin: 10px; }
+        .menu-button:hover { transform: scale(1.05); box-shadow: 0 0 50px rgba(255, 0, 0, 0.8); }
+
+        .story-panel { position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+                       background: rgba(0, 0, 0, 0.95); display: flex; flex-direction: column; 
+                       align-items: center; justify-content: center; z-index: 999; gap: 30px; 
+                       padding: 40px; text-align: center; }
+        .story-panel.hidden { display: none; }
+
+        .story-title { font-size: 32px; font-weight: bold; color: #ff0000; letter-spacing: 2px; }
+        .story-content { font-size: 14px; color: #00ff00; max-width: 800px; line-height: 1.8; }
+
+        .mission-objectives { background: rgba(0, 255, 0, 0.1); border: 2px solid #00ff00; 
+                              padding: 20px; max-width: 800px; text-align: left; }
+        .objective { margin: 10px 0; color: #ffff00; padding-left: 20px; }
+        .objective::before { content: '▶ '; color: #ff0000; margin-right: 10px; }
+
+        .level-progression { position: fixed; top: 20px; left: 20px; 
+                             background: rgba(0, 0, 0, 0.8); border: 2px solid #ff0000; 
+                             padding: 15px; z-index: 500; box-shadow: 0 0 15px rgba(255, 0, 0, 0.3); }
+        .level-info { color: #ff0000; font-weight: bold; font-size: 12px; margin: 5px 0; letter-spacing: 1px; }
+        .progress-bar-container { width: 200px; height: 8px; background: #333; border: 1px solid #ff0000; 
+                                  margin: 8px 0; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #ff0000, #ffff00); transition: width 0.3s; }
+
+        .main-container { display: flex; gap: 20px; width: 100%; height: 100%; padding: 10px; }
+        .left-panel, .right-panel { flex: 0 0 250px; background: rgba(0, 0, 0, 0.8); border: 2px solid #00ff00; 
+                                     padding: 15px; overflow-y: auto; box-shadow: 0 0 15px rgba(0, 255, 0, 0.2); font-size: 11px; }
+        .center-container { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 15px; }
+
+        .scope-view { position: relative; width: 55vh; height: 55vh; max-width: 55vw; max-height: 55vw; 
+                      background: radial-gradient(circle at center, #001a00 0%, #000 70%, #000 100%); 
+                      border: 8px solid #1a1a1a; border-radius: 50%; overflow: hidden; cursor: crosshair; 
+                      box-shadow: inset 0 0 30px rgba(0, 255, 0, 0.1), 0 0 40px rgba(0, 0, 0, 0.8); }
+        .scope-view::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+                              background: repeating-linear-gradient(0deg, rgba(0, 255, 0, 0.03) 0px, transparent 1px, 
+                                          transparent 2px, rgba(0, 255, 0, 0.03) 3px); pointer-events: none; z-index: 10; }
+
+        .target { position: absolute; width: 40px; height: 40px; transform: translate(-50%, -50%); 
+                  animation: pulse 0.8s ease-in-out infinite; }
+        .target-ring { position: absolute; width: 100%; height: 100%; border: 2px solid #ff4444; 
+                       border-radius: 50%; opacity: 0.7; }
+        .target-center { position: absolute; width: 8px; height: 8px; background: #ff4444; 
+                         border-radius: 50%; left: 50%; top: 50%; transform: translate(-50%, -50%); 
+                         box-shadow: 0 0 15px #ff4444; }
+        @keyframes pulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 
+                           50% { transform: translate(-50%, -50%) scale(1.1); } }
+
+        .guard { position: absolute; width: 30px; height: 30px; background: #ffff00; 
+                 border-radius: 2px; transform: translate(-50%, -50%); opacity: 0.6; transition: all 0.3s; }
+        .guard.detected { background: #ff6b6b; opacity: 1; box-shadow: 0 0 20px #ff6b6b; }
+
+        .civilian { position: absolute; width: 25px; height: 25px; background: #4488ff; 
+                    border-radius: 50%; transform: translate(-50%, -50%); opacity: 0.7; }
+
+        .crosshair { position: absolute; transform: translate(-50%, -50%); z-index: 20; }
+        .crosshair-outer { width: 60px; height: 60px; border: 2px solid rgba(0, 255, 0, 0.5); 
+                           border-radius: 50%; position: relative; }
+        .crosshair-inner { position: absolute; width: 20px; height: 20px; left: 50%; top: 50%; 
+                           transform: translate(-50%, -50%); border: 2px solid #00ff00; 
+                           border-radius: 50%; box-shadow: 0 0 10px rgba(0, 255, 0, 0.5); }
+        .crosshair-line-v, .crosshair-line-h { position: absolute; background: #00ff00; opacity: 0.6; }
+        .crosshair-line-v { width: 1px; height: 15px; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+        .crosshair-line-h { width: 15px; height: 1px; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+
+        .status-bottom { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        .hud-panel { background: rgba(0, 0, 0, 0.7); border: 2px solid #00ff00; padding: 10px; 
+                     font-size: 11px; font-weight: bold; letter-spacing: 1px; 
+                     box-shadow: 0 0 10px rgba(0, 255, 0, 0.2); }
+
+        .section-title { color: #ffff00; text-transform: uppercase; letter-spacing: 2px; 
+                         margin-bottom: 8px; border-bottom: 1px solid #00ff00; padding-bottom: 4px; font-size: 12px; }
+        .stat-row { display: flex; justify-content: space-between; margin: 4px 0; padding: 2px 0; }
+        .stat-label { flex: 1; }
+        .stat-value { color: #ffff00; margin-left: 8px; font-weight: bold; }
+
+        .alert-indicator { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+        .alert-dot { width: 10px; height: 10px; border-radius: 50%; animation: blink 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        .message-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+                           background: rgba(0, 0, 0, 0.9); display: none; flex-direction: column; 
+                           align-items: center; justify-content: center; z-index: 100; gap: 30px; }
+        .message-overlay.show { display: flex; }
+
+        .result-text { font-size: 24px; font-weight: bold; letter-spacing: 2px; text-align: center; max-width: 600px; }
+        .score { font-size: 40px; font-weight: bold; color: #ffff00; text-shadow: 0 0 20px #ffff00; }
+
+        .button { background: #00ff00; color: #000; border: none; padding: 12px 30px; font-size: 14px; 
+                  font-weight: bold; letter-spacing: 1px; cursor: pointer; text-transform: uppercase; 
+                  box-shadow: 0 0 20px rgba(0, 255, 0, 0.5); transition: all 0.3s; font-family: 'Courier New', monospace; }
+        .button:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(0, 255, 0, 0.8); }
+
+        .shop-panel { position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+                      background: rgba(0, 0, 0, 0.95); display: none; flex-direction: column; 
+                      align-items: center; justify-content: center; z-index: 998; gap: 20px; 
+                      padding: 30px; overflow-y: auto; }
+        .shop-panel.show { display: flex; }
+
+        .shop-title { font-size: 36px; font-weight: bold; color: #ffff00; letter-spacing: 2px; }
+
+        .shop-stats { background: rgba(255, 255, 0, 0.1); border: 1px solid #ffff00; 
+                      padding: 15px; border-radius: 3px; text-align: center; margin-bottom: 15px; }
+        .shop-money { font-size: 14px; color: #ffff00; font-weight: bold; }
+        .shop-money-amount { font-size: 18px; color: #00ff00; font-weight: bold; text-shadow: 0 0 10px #00ff00; }
+
+        .shop-container { display: flex; gap: 30px; width: 100%; max-width: 1400px; 
+                          justify-content: center; flex-wrap: wrap; }
+        .shop-section { background: rgba(0, 0, 0, 0.7); border: 2px solid #00ff00; 
+                        padding: 20px; border-radius: 4px; min-width: 300px; max-width: 350px; 
+                        box-shadow: 0 0 15px rgba(0, 255, 0, 0.2); }
+        .shop-section-title { font-size: 18px; font-weight: bold; color: #ffff00; 
+                              margin-bottom: 15px; border-bottom: 2px solid #00ff00; 
+                              padding-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+
+        .shop-item { background: rgba(0, 255, 0, 0.05); border: 1px solid #00ff00; padding: 12px; 
+                     margin: 10px 0; border-radius: 3px; cursor: pointer; transition: all 0.3s; }
+        .shop-item:hover { background: rgba(0, 255, 0, 0.15); transform: translateX(5px); 
+                           box-shadow: 0 0 10px rgba(0, 255, 0, 0.3); }
+        .shop-item.owned { background: rgba(0, 255, 0, 0.2); border-color: #ffff00; }
+
+        .shop-item-name { font-size: 12px; font-weight: bold; color: #00ff00; margin-bottom: 5px; }
+        .shop-item-desc { font-size: 10px; color: #aaffaa; margin-bottom: 8px; line-height: 1.4; }
+        .shop-item-stats { font-size: 9px; color: #ffff00; margin-bottom: 8px; }
+        .shop-item-cost { font-size: 11px; font-weight: bold; color: #ffff00; margin-bottom: 8px; }
+        .shop-item-cost.owned { color: #00ff00; }
+
+        .shop-item-button { width: 100%; background: #00ff00; color: #000; border: none; 
+                            padding: 8px; font-size: 11px; font-weight: bold; cursor: pointer; 
+                            border-radius: 2px; transition: all 0.2s; font-family: 'Courier New', monospace; }
+        .shop-item-button:hover { background: #ffff00; transform: scale(1.02); }
+        .shop-item-button.owned { background: #444; color: #999; cursor: default; }
+        .shop-item-button.owned:hover { background: #444; transform: scale(1); }
+
+        .close-shop-btn { background: linear-gradient(135deg, #ff0000, #8b0000); color: #fff; 
+                          border: 2px solid #ff0000; padding: 12px 40px; font-size: 14px; font-weight: bold; 
+                          letter-spacing: 1px; cursor: pointer; text-transform: uppercase; 
+                          box-shadow: 0 0 20px rgba(255, 0, 0, 0.5); transition: all 0.3s; 
+                          font-family: 'Courier New', monospace; margin-top: 20px; }
+        .close-shop-btn:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(255, 0, 0, 0.8); }
+    </style>
+</head>
+<body>
+    <!-- MAIN MENU -->
+    <div class="main-menu" id="mainMenu">
+        <div class="game-title">OPERATION: SILENT STRIKE</div>
+        <div class="game-subtitle">A Campaign of Assassination and Betrayal</div>
+        <button class="menu-button" onclick="startCampaign()">START CAMPAIGN</button>
+        <button class="menu-button" onclick="continueCampaign()" id="continueCampaign" style="display:none;">CONTINUE</button>
+        <button class="menu-button" onclick="resetCampaign()">NEW GAME</button>
+    </div>
+
+    <!-- STORY PANEL -->
+    <div class="story-panel" id="storyPanel">
+        <div class="story-title" id="storyTitle">Chapter 1</div>
+        <div class="story-content" id="storyContent">Loading story...</div>
+        <div class="mission-objectives" id="missionObjectives"></div>
+        <button class="button" onclick="closeMissionBriefing()">ACCEPT MISSION</button>
+    </div>
+
+    <!-- SHOP PANEL -->
+    <div class="shop-panel" id="shopPanel">
+        <div class="shop-title">⚙️ TACTICAL EQUIPMENT SHOP</div>
+        <div class="shop-stats">
+            <div class="shop-money">AVAILABLE CREDITS</div>
+            <div class="shop-money-amount" id="shopMoney">0</div>
+        </div>
+        <div class="shop-container">
+            <div class="shop-section">
+                <div class="shop-section-title">🔫 Weapons</div>
+                <div id="weaponsShop"></div>
+            </div>
+            <div class="shop-section">
+                <div class="shop-section-title">💣 Ammunition</div>
+                <div id="ammoShop"></div>
+            </div>
+            <div class="shop-section">
+                <div class="shop-section-title">📚 Training Courses</div>
+                <div id="trainingShop"></div>
+            </div>
+        </div>
+        <button class="close-shop-btn" onclick="closeShop()">CONTINUE TO NEXT MISSION</button>
+    </div>
+
+    <!-- LEVEL PROGRESSION -->
+    <div class="level-progression" id="levelProgression">
+        <div class="level-info" id="levelDisplay">LEVEL 1</div>
+        <div class="level-info" style="color: #00ff00;">Campaign Progress</div>
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="progressFill" style="width: 0%;"></div>
+        </div>
+        <div class="level-info" id="missionCount">0/10 Missions</div>
+        <div class="level-info" style="margin-top: 15px; border-top: 1px solid #ff0000; padding-top: 10px;">💰 FUNDS</div>
+        <div class="level-info" style="color: #00ff00; font-size: 16px; text-shadow: 0 0 10px #00ff00;" id="moneyDisplay">$0</div>
+    </div>
+
+    <!-- GAME INTERFACE -->
+    <div class="main-container" id="gameInterface" style="display: none;">
+        <div class="left-panel">
+            <div class="section-title">📋 Mission Brief</div>
+            <div style="font-size: 10px; color: #aaffaa; line-height: 1.5;" id="missionBriefing"></div>
+        </div>
+
+        <div class="center-container">
+            <div class="scope-view" id="scopeView">
+                <div class="target" id="target">
+                    <div class="target-ring"></div>
+                    <div class="target-center"></div>
+                </div>
+                <div id="guardsContainer"></div>
+                <div id="civiliansContainer"></div>
+                <div class="crosshair" id="crosshair">
+                    <div class="crosshair-outer">
+                        <div class="crosshair-inner">
+                            <div class="crosshair-line-v"></div>
+                            <div class="crosshair-line-h"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="status-bottom">
+                <div class="hud-panel">
+                    <div style="color: #ffff00;">ALERT</div>
+                    <div class="alert-indicator">
+                        <div class="alert-dot" id="alertDot"></div>
+                        <span id="alertText" style="color: #00ff00;">CLEAR</span>
+                    </div>
+                </div>
+                <div class="hud-panel">
+                    <div style="color: #ffff00;">DISTANCE</div>
+                    <div id="distance">0.0m</div>
+                </div>
+                <div class="hud-panel">
+                    <div style="color: #ffff00;">AMMO</div>
+                    <div id="ammoDisplay">0/0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="section-title">📊 Mission Stats</div>
+            <div class="stat-row">
+                <span class="stat-label">Kills:</span>
+                <span class="stat-value" id="killCount">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Accuracy:</span>
+                <span class="stat-value" id="accuracy">0%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Civilian Hits:</span>
+                <span class="stat-value" id="civilianHits">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- RESULT OVERLAY -->
+    <div class="message-overlay" id="messageOverlay">
+        <div class="result-text" id="resultText"></div>
+        <div id="bonusesDisplay"></div>
+        <div class="score" id="scoreDisplay"></div>
+        <button class="button" id="nextMissionBtn">NEXT: VISIT SHOP</button>
+        <button class="button" onclick="returnToMenu()" style="background: #ff0000;">RETURN TO MENU</button>
+    </div>
+
+    <script>
+        // WEAPONS
+        const weapons = {
+            'M40A1': { name: 'M40A1', damage: 100, accuracy: 95, cost: 0, owned: true, description: 'Standard rifle' },
+            'McMillan TAC-338': { name: 'McMillan TAC-338', damage: 120, accuracy: 98, cost: 2000, owned: false, description: 'Heavy sniper' },
+            'Barrett M107': { name: 'Barrett M107', damage: 150, accuracy: 90, cost: 5000, owned: false, description: 'Anti-material' },
+            'DSR 50': { name: 'DSR 50', damage: 130, accuracy: 96, cost: 3500, owned: false, description: 'Precision rifle' },
+            'L96A1': { name: 'L96A1', damage: 110, accuracy: 97, cost: 2500, owned: false, description: 'Balanced rifle' }
+        };
+
+        // AMMO
+        const ammoTypes = {
+            'Standard': { name: 'Standard Rounds', cost: 0, owned: true, description: 'Standard ammunition', multiplier: 2.0 },
+            'AP': { name: 'Armor-Piercing', cost: 500, owned: false, description: 'Penetrates armor', multiplier: 2.2 },
+            'EXP': { name: 'Explosive Rounds', cost: 800, owned: false, description: 'Explosive impact', multiplier: 3.0 },
+            'PRE': { name: 'Precision Rounds', cost: 600, owned: false, description: 'Improved accuracy', multiplier: 2.5 },
+            'SIL': { name: 'Silent Rounds', cost: 700, owned: false, description: 'Silenced shots', multiplier: 1.8 }
+        };
+
+        // TRAINING
+        const training = {
+            'Steady': { name: 'Steady Hand Training', cost: 1000, owned: false, description: '+10% accuracy' },
+            'Master': { name: 'Sniper Mastery', cost: 2500, owned: false, description: '+50% headshot damage' },
+            'Stealth': { name: 'Stealth Training', cost: 1500, owned: false, description: 'Better stealth kills' },
+            'Ballistics': { name: 'Advanced Ballistics', cost: 2000, owned: false, description: '+30% range bonus' },
+            'Medicine': { name: 'Combat Medicine', cost: 1800, owned: false, description: 'Recovery between missions' }
+        };
+
+        // CAMPAIGN & GAME STATE
+        const campaign = { currentMission: 0, totalMissions: 10, campaignScore: 0, completedMissions: [], money: 0 };
+        let game = { state: 'aiming', crosshairPos: { x: 50, y: 50 }, targetPos: { x: 60, y: 45 }, 
+                     guards: [], civilians: [], alertLevel: 0, ammo: 10, maxAmmo: 10, 
+                     kills: 0, shotsFired: 0, civilianHits: 0, currentMissionData: null,
+                     selectedWeapon: 'M40A1', selectedAmmo: 'Standard', weaponDamage: 100, 
+                     accuracyBonus: 0, headshotMultiplier: 2.0, stealthMultiplier: 1.5, 
+                     rangeMultiplier: 1.0, distanceToTarget: 0 };
+
+        const missions = [
+            { id: 0, chapter: 'Chapter 1: The Defector', title: 'Assassination: Colonel Vasquez', 
+              story: 'Colonel Vasquez defected from military intelligence. Eliminate him before he reaches the embassy.',
+              guards: 2, civilians: 1, rewards: { score: 1000, money: 500 } },
+            { id: 1, chapter: 'Chapter 1: The Defector', title: 'Assassination: General Reeves', 
+              story: 'General Reeves is coordinating with Vasquez. Eliminate him at the summit.',
+              guards: 3, civilians: 2, rewards: { score: 1500, money: 750 } },
+            { id: 2, chapter: 'Chapter 2: Shadow Operations', title: 'Elimination: Terrorist Cell', 
+              story: 'A terrorist cell is hiding in the warehouse. Clear them out.',
+              guards: 5, civilians: 1, rewards: { score: 2000, money: 1000 } },
+            { id: 3, chapter: 'Chapter 2: Shadow Operations', title: 'Extraction: Save the Informant', 
+              story: 'Keep the informant alive as enemies attack. Provide cover fire.',
+              guards: 4, civilians: 3, rewards: { score: 1800, money: 900 } },
+            { id: 4, chapter: 'Chapter 3: The Conspiracy', title: 'Assassination: Ambassador Chen', 
+              story: 'Ambassador Chen is funding the organization. Remove the financial pipeline.',
+              guards: 6, civilians: 4, rewards: { score: 2500, money: 1500 } },
+            { id: 5, chapter: 'Chapter 3: The Conspiracy', title: 'Sabotage: Research Facility', 
+              story: 'Destroy experimental weapons research before it is completed.',
+              guards: 5, civilians: 2, rewards: { score: 2200, money: 1200 } },
+            { id: 6, chapter: 'Chapter 4: The Inner Circle', title: 'Elimination: Council Members', 
+              story: 'Three council members are meeting. This is your best opportunity.',
+              guards: 7, civilians: 2, rewards: { score: 3000, money: 2000 } },
+            { id: 7, chapter: 'Chapter 4: The Inner Circle', title: 'Assassination: The Architect', 
+              story: 'The Architect - the mastermind. He is attending a private event tonight.',
+              guards: 8, civilians: 3, rewards: { score: 3500, money: 2500 } },
+            { id: 8, chapter: 'Chapter 5: Endgame', title: 'Final Strike: The Fortress', 
+              story: 'The organization headquarters is undefended. This is your final strike.',
+              guards: 10, civilians: 5, rewards: { score: 4000, money: 3000 } },
+            { id: 9, chapter: 'Chapter 5: The Reckoning', title: 'The Final Mission', 
+              story: 'The final mission. Eliminate the remaining leadership. End this war.',
+              guards: 12, civilians: 4, rewards: { score: 5000, money: 4000 } }
+        ];
+
+        function startCampaign() {
+            campaign.currentMission = 0;
+            campaign.campaignScore = 0;
+            campaign.completedMissions = [];
+            campaign.money = 0;
+            continueCampaign();
+        }
+
+        function continueCampaign() {
+            document.getElementById('mainMenu').classList.add('hidden');
+            loadMission(campaign.currentMission);
+        }
+
+        function loadMission(idx) {
+            const mission = missions[idx];
+            game.currentMissionData = mission;
+            document.getElementById('storyTitle').textContent = mission.chapter + ': ' + mission.title;
+            document.getElementById('storyContent').textContent = mission.story;
+            document.getElementById('missionObjectives').innerHTML = '<strong>Objectives:</strong><div class="objective">Eliminate target</div><div class="objective">Avoid alarms</div>';
+            document.getElementById('storyPanel').classList.remove('hidden');
+        }
+
+        function closeMissionBriefing() {
+            document.getElementById('storyPanel').classList.add('hidden');
+            document.getElementById('gameInterface').style.display = 'flex';
+            const mission = game.currentMissionData;
+
+            game.state = 'aiming';
+            game.ammo = 10;
+            game.maxAmmo = 10;
+            game.kills = 0;
+            game.shotsFired = 0;
+            game.civilianHits = 0;
+            game.alertLevel = 0;
+
+            game.guards = [];
+            for (let i = 0; i < mission.guards; i++) {
+                game.guards.push({ x: Math.random() * 100, y: Math.random() * 100, detected: false });
+            }
+
+            game.civilians = [];
+            for (let i = 0; i < mission.civilians; i++) {
+                game.civilians.push({ x: Math.random() * 100, y: Math.random() * 100, alive: true });
+            }
+
+            game.targetPos = { x: Math.random() * 80 + 10, y: Math.random() * 80 + 10 };
+
+            document.getElementById('missionBriefing').textContent = mission.title;
+            document.getElementById('ammoDisplay').textContent = game.ammo + '/' + game.maxAmmo;
+            document.getElementById('target').style.left = game.targetPos.x + '%';
+            document.getElementById('target').style.top = game.targetPos.y + '%';
+            renderGuards();
+            renderCivilians();
+            updateLevelDisplay();
+        }
+
+        function handleMouseMove(e) {
+            if (game.state !== 'aiming') return;
+            const rect = document.getElementById('scopeView').getBoundingClientRect();
+            let x = ((e.clientX - rect.left) / rect.width) * 100;
+            let y = ((e.clientY - rect.top) / rect.height) * 100;
+            game.crosshairPos.x = Math.max(0, Math.min(100, x));
+            game.crosshairPos.y = Math.max(0, Math.min(100, y));
+
+            document.getElementById('crosshair').style.left = game.crosshairPos.x + '%';
+            document.getElementById('crosshair').style.top = game.crosshairPos.y + '%';
+
+            const dx = game.crosshairPos.x - game.targetPos.x;
+            const dy = game.crosshairPos.y - game.targetPos.y;
+            game.distanceToTarget = Math.sqrt(dx * dx + dy * dy);
+            document.getElementById('distance').textContent = game.distanceToTarget.toFixed(1) + 'm';
+
+            game.guards.forEach(g => {
+                const gdx = game.crosshairPos.x - g.x;
+                const gdy = game.crosshairPos.y - g.y;
+                if (Math.sqrt(gdx * gdx + gdy * gdy) < 20) g.detected = true;
+            });
+
+            game.alertLevel = game.guards.filter(g => g.detected).length > 0 ? 2 : 0;
+            renderGuards();
+            updateAlertStatus();
+        }
+
+        function handleFire() {
+            if (game.state !== 'aiming') return;
+            game.ammo--;
+            game.shotsFired++;
+            document.getElementById('ammoDisplay').textContent = game.ammo + '/' + game.maxAmmo;
+
+            const dx = game.crosshairPos.x - game.targetPos.x;
+            const dy = game.crosshairPos.y - game.targetPos.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            // Apply accuracy bonus from training
+            const accuracyThreshold = 8 - (game.accuracyBonus / 100);
+            
+            let score = 0;
+            let message = '';
+            let isHeadshot = false;
+
+            game.civilians.forEach(c => {
+                const cdx = game.crosshairPos.x - c.x;
+                const cdy = game.crosshairPos.y - c.y;
+                if (Math.sqrt(cdx * cdx + cdy * cdy) < 8) {
+                    c.alive = false;
+                    game.civilianHits++;
+                }
+            });
+
+            if (game.civilianHits > 0) {
+                message = 'CIVILIAN CASUALTY - MISSION FAILED';
+                score = 0;
+            } else if (dist < accuracyThreshold) {
+                game.kills++;
+                
+                // Base score from mission
+                score = game.currentMissionData.rewards.score;
+                
+                // Apply weapon damage multiplier
+                const selectedWeapon = weapons[game.selectedWeapon];
+                const weaponDamageMultiplier = selectedWeapon.damage / 100;
+                score *= weaponDamageMultiplier;
+                
+                // Check for headshot (closer accuracy = headshot)
+                if (dist < accuracyThreshold / 2.5) {
+                    isHeadshot = true;
+                    // Apply ammo headshot multiplier
+                    const selectedAmmo = ammoTypes[game.selectedAmmo];
+                    score *= selectedAmmo.multiplier;
+                    // Apply sniper mastery training bonus
+                    score *= (1 + (game.headshotMultiplier - 1) * 0.5);
+                }
+                
+                // Apply stealth bonus
+                if (game.alertLevel === 0) {
+                    score *= game.stealthMultiplier;
+                }
+                
+                // Apply range bonus from training
+                if (game.distanceToTarget > 40) {
+                    score *= game.rangeMultiplier;
+                }
+                
+                message = 'MISSION COMPLETE' + (isHeadshot ? ' - HEADSHOT!' : '');
+            } else {
+                message = 'MISSION FAILED - TARGET ESCAPED';
+                score = 0;
+            }
+
+            document.getElementById('killCount').textContent = game.kills;
+            document.getElementById('accuracy').textContent = game.shotsFired > 0 ? Math.round((game.kills / game.shotsFired) * 100) + '%' : '0%';
+            document.getElementById('civilianHits').textContent = game.civilianHits;
+            renderCivilians();
+
+            campaign.campaignScore += Math.round(score);
+            campaign.money += game.currentMissionData.rewards.money;
+            campaign.completedMissions.push(game.currentMissionData.id);
+
+            document.getElementById('resultText').textContent = message;
+            document.getElementById('resultText').style.color = message.includes('FAILED') ? '#ff4444' : '#00ff00';
+            document.getElementById('scoreDisplay').textContent = 'SCORE: ' + Math.round(score);
+            document.getElementById('bonusesDisplay').innerHTML = '';
+            document.getElementById('moneyDisplay').textContent = '$' + campaign.money.toLocaleString();
+
+            document.getElementById('messageOverlay').classList.add('show');
+            game.state = 'result';
+        }
+
+        function openShop() {
+            document.getElementById('shopPanel').classList.add('show');
+            document.getElementById('shopMoney').textContent = campaign.money;
+
+            // Show currently selected weapon
+            const weaponStatus = document.createElement('div');
+            weaponStatus.innerHTML = `<div style="color: #00ff00; margin-bottom: 15px; font-size: 11px;">
+                Current Weapon: <span style="color: #ffff00;">${game.selectedWeapon}</span>
+            </div>`;
+
+            const weaponsShop = document.getElementById('weaponsShop');
+            weaponsShop.innerHTML = '';
+            weaponsShop.appendChild(weaponStatus);
+            
+            Object.keys(weapons).forEach(key => {
+                const w = weapons[key];
+                const div = document.createElement('div');
+                div.className = `shop-item ${w.owned ? 'owned' : ''}`;
+                const isSelected = game.selectedWeapon === key;
+                div.innerHTML = `<div class="shop-item-name">${w.name}${isSelected ? ' ✓' : ''}</div><div class="shop-item-desc">${w.description}</div>
+                    <div class="shop-item-stats">DMG: ${w.damage} | ACC: ${w.accuracy}%</div>
+                    <div class="shop-item-cost ${w.owned ? 'owned' : ''}">${w.owned ? '✓ OWNED' : '$' + w.cost}</div>
+                    <button class="shop-item-button ${w.owned ? 'owned' : ''}" onclick="${w.owned ? `selectWeapon('${key}')` : `buyItem('weapons', '${key}')`}" ${!w.owned ? '' : ''}>${w.owned ? (isSelected ? 'EQUIPPED' : 'EQUIP') : 'BUY'}</button>`;
+                weaponsShop.appendChild(div);
+            });
+
+            // Show currently selected ammo
+            const ammoStatus = document.createElement('div');
+            ammoStatus.innerHTML = `<div style="color: #00ff00; margin-bottom: 15px; font-size: 11px;">
+                Current Ammo: <span style="color: #ffff00;">${ammoTypes[game.selectedAmmo].name}</span>
+            </div>`;
+
+            const ammoShop = document.getElementById('ammoShop');
+            ammoShop.innerHTML = '';
+            ammoShop.appendChild(ammoStatus);
+            
+            Object.keys(ammoTypes).forEach(key => {
+                const a = ammoTypes[key];
+                const div = document.createElement('div');
+                div.className = `shop-item ${a.owned ? 'owned' : ''}`;
+                const isSelected = game.selectedAmmo === key;
+                div.innerHTML = `<div class="shop-item-name">${a.name}${isSelected ? ' ✓' : ''}</div><div class="shop-item-desc">${a.description}</div>
+                    <div class="shop-item-stats">Headshot: x${a.multiplier}</div>
+                    <div class="shop-item-cost ${a.owned ? 'owned' : ''}">${a.owned ? '✓ OWNED' : '$' + a.cost}</div>
+                    <button class="shop-item-button ${a.owned ? 'owned' : ''}" onclick="${a.owned ? `selectAmmo('${key}')` : `buyItem('ammo', '${key}')`}" ${!a.owned ? '' : ''}>${a.owned ? (isSelected ? 'EQUIPPED' : 'EQUIP') : 'BUY'}</button>`;
+                ammoShop.appendChild(div);
+            });
+
+            const trainingShop = document.getElementById('trainingShop');
+            trainingShop.innerHTML = '';
+            Object.keys(training).forEach(key => {
+                const t = training[key];
+                const div = document.createElement('div');
+                div.className = `shop-item ${t.owned ? 'owned' : ''}`;
+                div.innerHTML = `<div class="shop-item-name">${t.name}${t.owned ? ' ✓' : ''}</div><div class="shop-item-desc">${t.description}</div>
+                    <div class="shop-item-stats">Training Course</div>
+                    <div class="shop-item-cost ${t.owned ? 'owned' : ''}">${t.owned ? '✓ OWNED' : '$' + t.cost}</div>
+                    <button class="shop-item-button ${t.owned ? 'owned' : ''}" onclick="buyItem('training', '${key}')" ${!t.owned ? '' : 'disabled'}>${t.owned ? 'TRAINED' : 'BUY'}</button>`;
+                trainingShop.appendChild(div);
+            });
+        }
+
+        function selectWeapon(key) {
+            game.selectedWeapon = key;
+            game.weaponDamage = weapons[key].damage;
+            openShop();
+        }
+
+        function selectAmmo(key) {
+            game.selectedAmmo = key;
+            openShop();
+        }
+
+        function buyItem(type, key) {
+            const items = { weapons, ammo: ammoTypes, training };
+            const item = items[type][key];
+            if (item.owned && type !== 'training') return;
+            if (campaign.money >= item.cost) {
+                campaign.money -= item.cost;
+                item.owned = true;
+                
+                // Apply training bonuses immediately
+                if (type === 'training') {
+                    if (key === 'Steady') game.accuracyBonus = 10;
+                    if (key === 'Master') game.headshotMultiplier = 2.5;
+                    if (key === 'Stealth') game.stealthMultiplier = 2.0;
+                    if (key === 'Ballistics') game.rangeMultiplier = 1.3;
+                    if (key === 'Medicine') { /* Recovery effect applied between missions */ }
+                }
+                
+                document.getElementById('moneyDisplay').textContent = '$' + campaign.money.toLocaleString();
+                document.getElementById('shopMoney').textContent = campaign.money;
+                openShop();
+            } else {
+                alert('Not enough credits!');
+            }
+        }
+
+        function closeShop() {
+            document.getElementById('shopPanel').classList.remove('show');
+            if (campaign.currentMission < 9) {
+                campaign.currentMission++;
+                loadMission(campaign.currentMission);
+            } else {
+                alert('CAMPAIGN COMPLETE! Final Score: ' + campaign.campaignScore);
+                returnToMenu();
+            }
+        }
+
+        function renderGuards() {
+            const c = document.getElementById('guardsContainer');
+            c.innerHTML = '';
+            game.guards.forEach(g => {
+                const el = document.createElement('div');
+                el.className = `guard ${g.detected ? 'detected' : ''}`;
+                el.style.left = g.x + '%';
+                el.style.top = g.y + '%';
+                c.appendChild(el);
+            });
+        }
+
+        function renderCivilians() {
+            const c = document.getElementById('civiliansContainer');
+            c.innerHTML = '';
+            game.civilians.forEach(civ => {
+                if (civ.alive) {
+                    const el = document.createElement('div');
+                    el.className = 'civilian';
+                    el.style.left = civ.x + '%';
+                    el.style.top = civ.y + '%';
+                    c.appendChild(el);
+                }
+            });
+        }
+
+        function updateAlertStatus() {
+            const color = game.alertLevel === 0 ? '#22c55e' : '#ef4444';
+            const text = game.alertLevel === 0 ? 'CLEAR' : 'ALERT';
+            document.getElementById('alertDot').style.background = color;
+            document.getElementById('alertText').textContent = text;
+            document.getElementById('alertText').style.color = color;
+        }
+
+        function updateLevelDisplay() {
+            const progress = ((campaign.currentMission) / 10) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+            document.getElementById('missionCount').textContent = (campaign.currentMission + 1) + '/10 Missions';
+            document.getElementById('levelDisplay').textContent = 'LEVEL ' + (Math.floor(campaign.currentMission / 2) + 1);
+            document.getElementById('moneyDisplay').textContent = '$' + campaign.money.toLocaleString();
+        }
+
+        function returnToMenu() {
+            document.getElementById('gameInterface').style.display = 'none';
+            document.getElementById('storyPanel').classList.add('hidden');
+            document.getElementById('messageOverlay').classList.remove('show');
+            document.getElementById('shopPanel').classList.remove('show');
+            document.getElementById('mainMenu').classList.remove('hidden');
+        }
+
+        function resetCampaign() {
+            if (confirm('Reset all progress?')) {
+                campaign.currentMission = 0;
+                campaign.campaignScore = 0;
+                campaign.completedMissions = [];
+                campaign.money = 0;
+                Object.keys(weapons).forEach(k => { if (k !== 'M40A1') weapons[k].owned = false; });
+                Object.keys(ammoTypes).forEach(k => { if (k !== 'Standard') ammoTypes[k].owned = false; });
+                Object.keys(training).forEach(k => { training[k].owned = false; });
+                startCampaign();
+            }
+        }
+
+        // EVENT LISTENERS
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('scopeView').addEventListener('mousemove', handleMouseMove);
+            document.getElementById('scopeView').addEventListener('click', handleFire);
+            document.getElementById('nextMissionBtn').onclick = () => {
+                document.getElementById('messageOverlay').classList.remove('show');
+                document.getElementById('gameInterface').style.display = 'none';
+                openShop();
+            };
+        });
+    </script>
+</body>
+</html>
